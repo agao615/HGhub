@@ -28,7 +28,7 @@ type Props = {
   startTime?: number;
 };
 
-const RATES = [1, 1.25, 1.5, 2];
+const RATES = [1, 1.25, 1.5, 2, 3, 4, 5];
 
 const stripHtml = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 
@@ -817,9 +817,8 @@ export default function Feed({ videoIds, startIndex = 0, title = "", mode, kind 
             <button
               onClick={() => {
                 if (speedLock) { setSpeedLock(false); return; }
-                const seq = [1, 1.25, 1.5, 2];
-                const i = seq.indexOf(rate);
-                setRate(seq[(i + 1) % seq.length]);
+                const i = RATES.indexOf(rate);
+                setRate(RATES[(i + 1) % RATES.length]);
               }}
               className={`ml-auto shrink-0 flex items-center gap-1 px-2.5 h-8 rounded-full text-[12px] font-bold pressable ${effRate !== 1 ? "bg-primary text-on-primary" : "hg-chip hg-ink-2"}`}>
               <IBoltF size={12} />{effRate}x

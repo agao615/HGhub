@@ -105,7 +105,8 @@ export default function Player({
   const cycleRate = () => {
     const video = videoRef.current;
     if (!video) return;
-    const next = rate === 1 ? 1.25 : rate === 1.25 ? 1.5 : rate === 1.5 ? 2 : 1;
+    const seq = [1, 1.25, 1.5, 2, 3, 4, 5];
+    const next = seq[(seq.indexOf(rate) + 1) % seq.length];
     video.playbackRate = next;
     setRate(next);
   };
