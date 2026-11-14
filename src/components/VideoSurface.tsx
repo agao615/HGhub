@@ -83,11 +83,20 @@ const VideoSurface = forwardRef<VideoHandle, Props>(function VideoSurface(
     if (useHls && Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
-        maxBufferLength: 30,
+        /* 缓冲按「媒体秒数」算，倍速播放时实际只够 秒数/倍速 的墙钟时间：
+           原来 30s 缓冲在 3x 下只有 10s，网络抖一下就见底。
+           2048 源单集分片约 3.5–4MB/4s（≈8Mbps），3x 需要约 24Mbps 的稳定带宽，
+           缓冲只能吸收抖动、不能补带宽，所以这里放宽到 2 分钟媒体、
+           并把 maxBufferSize 调到 150MB（8Mbps × 120s ≈ 120MB）。 */
+        maxBufferLength: 120,
+        maxMaxBufferLength: 240,
+        maxBufferSize: 150_000_000,
         backBufferLength: 30,
+        startFragPrefetch: true,
         manifestLoadingTimeOut: 20000,
-        manifestLoadingMaxRetry: 3,
-        fragLoadingMaxRetry: 4,
+        manifestLoadingMaxRetry: 4,
+        fragLoadingTimeOut: 30000,
+        fragLoadingMaxRetry: 6,
       });
       hlsRef.current = hls;
       hls.loadSource(url);

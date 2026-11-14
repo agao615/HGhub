@@ -43,11 +43,14 @@ export default function Player({
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
-        maxBufferLength: 24,
+        maxBufferLength: 60,
+        maxMaxBufferLength: 120,
+        maxBufferSize: 120_000_000,
         backBufferLength: 30,
+        startFragPrefetch: true,
         manifestLoadingTimeOut: 20000,
-        manifestLoadingMaxRetry: 3,
-        fragLoadingMaxRetry: 4,
+        manifestLoadingMaxRetry: 4,
+        fragLoadingMaxRetry: 6,
       });
       hlsRef.current = hls;
       hls.loadSource(url);
