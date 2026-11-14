@@ -90,7 +90,9 @@ export function PostDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const { toast } = useStore();
   const [post, setPost] = useState<(Post & { content?: string; video_url?: string }) | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [play, setPlay] = useState(false);
+  /* 新版接口不再在帖子详情里给 video_url，点播放时才去 /playback 取一次 */
+  const [playUrl, setPlayUrl] = useState("");
+  const [playBusy, setPlayBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -99,6 +101,21 @@ export function PostDetail({ id, onBack }: { id: number; onBack: () => void }) {
       .catch((e) => { if (alive) setErr((e as Error).message || "加载失败"); });
     return () => { alive = false; };
   }, [id]);
+
+  const videoSrc = playUrl || post?.video_url || "";
+
+  const startPlay = async () => {
+    if (playBusy || videoSrc) return;
+    setPlayBusy(true);
+    try {
+      const info = await api.postPlay(id);
+      setPlayUrl(info.video_url);
+    } catch (e) {
+      toast((e as Error).message || "该帖子没有视频", "info");
+    } finally {
+      setPlayBusy(false);
+    }
+  };
 
   return (
     <div className="absolute inset-0 bg-bg flex flex-col">
@@ -115,14 +132,14 @@ export function PostDetail({ id, onBack }: { id: number; onBack: () => void }) {
         ) : (
           <>
             <div className="relative w-full bg-black" style={{ height: "min(40vh, 360px)" }}>
-              {play && post.video_url ? (
-                <Player src={post.video_url} poster={cover(post.cover)} autoPlay controls className="w-full h-full" />
+              {videoSrc ? (
+                <Player src={videoSrc} poster={cover(post.cover)} autoPlay controls className="w-full h-full" />
               ) : (
-                <button onClick={() => { if (post.video_url) setPlay(true); else toast("该帖子没有视频", "info"); }} className="absolute inset-0">
+                <button onClick={startPlay} className="absolute inset-0">
                   <Img src={post.cover} eager />
                   <span className="absolute inset-0 flex items-center justify-center">
                     <span className="w-14 h-14 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center elev-2">
-                      <IPlayF size={24} className="text-white ml-0.5" />
+                      {playBusy ? <span className="w-6 h-6 spinner" /> : <IPlayF size={24} className="text-white ml-0.5" />}
                     </span>
                   </span>
                 </button>

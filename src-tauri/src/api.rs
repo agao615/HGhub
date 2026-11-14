@@ -25,6 +25,11 @@ impl Api {
         edge("GET", path, None, token.as_deref()).await
     }
 
+    async fn post(&self, path: &str, body: Option<Value>) -> Result<Value, String> {
+        let token = self.token();
+        edge("POST", path, body, token.as_deref()).await
+    }
+
     async fn authed(&self, method: &str, path: &str, body: Option<Value>) -> Result<Value, String> {
         let token = self
             .token()
@@ -341,11 +346,68 @@ pub async fn api_video(state: State<'_, Api>, id: i64) -> Result<Value, String> 
     state.get(&format!("/api/videos/{id}")).await
 }
 
+/// 取播放地址。
+///
+/// 站点在 2026-11 改版后，旧的 `GET /api/videos/{id}/play` 仍返回 `status: 1`，
+/// 但 `video_url` 恒为空（客户端因此报「暂无播放地址」）。真正的地址改由
+/// `POST /api/videos/{id}/episodes/{ep}/playback`（空 body）返回
+/// `streams.main` / `streams.hevc`。旧接口保留为兜底，防止上游回滚。
 #[tauri::command]
 pub async fn api_play(state: State<'_, Api>, id: i64, ep: u32) -> Result<Value, String> {
+    let fresh = state
+        .post(&format!("/api/videos/{id}/episodes/{ep}/playback"), None)
+        .await
+        .unwrap_or(Value::Null);
+
+    let streams = fresh.get("streams").cloned().unwrap_or(Value::Null);
+    let main = streams
+        .get("main")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    if !main.is_empty() {
+        return Ok(json!({
+            "id": id,
+            "ep_num": ep,
+            "title": fresh.get("title").cloned().unwrap_or(json!("")),
+            "duration": fresh.get("duration").cloned().unwrap_or(json!(0)),
+            "video_url": main,
+            "video_url_hevc": streams.get("hevc").cloned().unwrap_or(json!("")),
+            "cdn": fresh.get("cdn").cloned().unwrap_or(Value::Null),
+        }));
+    }
+
     state
         .get(&format!("/api/videos/{id}/play?ep={ep}&page_texts=0"))
         .await
+}
+
+/// 吃瓜帖子播放地址：`POST /api/posts/{id}/playback` 返回 `videos: [{ url }]`。
+#[tauri::command]
+pub async fn api_post_play(state: State<'_, Api>, id: i64) -> Result<Value, String> {
+    let data = state
+        .post(&format!("/api/posts/{id}/playback"), None)
+        .await?;
+    let url = data
+        .get("videos")
+        .and_then(|v| v.as_array())
+        .and_then(|a| a.first())
+        .and_then(|v| v.get("url"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if url.is_empty() {
+        return Err("该帖子没有视频".to_string());
+    }
+    Ok(json!({
+        "id": id,
+        "ep_num": 1,
+        "title": "",
+        "duration": 0,
+        "video_url": url,
+        "cdn": data.get("cdn").cloned().unwrap_or(Value::Null),
+    }))
 }
 
 /* ───────────────────────── 评论 / 互动 ───────────────────────── */
