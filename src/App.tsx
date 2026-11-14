@@ -67,6 +67,7 @@ function StackPage({ page, onBack, wide, top, bottomInset }: {
   if (page.kind === "feed") {
     return (
       <Feed videoIds={page.videoIds} startIndex={page.index} title={page.title} kind={page.feedKind || "video"}
+        source={page.source}
         startEp={page.startEp} startTime={page.startTime}
         mode="context" active={top} bottomInset={bottomInset} onBack={onBack} />
     );

@@ -2,6 +2,7 @@ mod api;
 mod lines;
 mod media;
 mod net;
+mod s2048;
 mod session;
 
 use api::Api;
@@ -65,6 +66,9 @@ pub fn run() {
             api::api_like,
             api::api_collect,
             api::api_follow,
+            s2048::api_2048_feed,
+            s2048::api_2048_video,
+            s2048::api_2048_play,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -18,6 +18,7 @@ export default function Category({ wide }: { wide: boolean }) {
   const { push } = useStore();
   const [rows, setRows] = useState<Record<string, VideoCard[]>>({});
   const [posts, setPosts] = useState<Post[]>([]);
+  const [s2048, setS2048] = useState<VideoCard[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,9 +36,12 @@ export default function Category({ wide }: { wide: boolean }) {
       );
       let p: Post[] = [];
       try { p = (await api.posts(1, 8))?.items || []; } catch { p = []; }
+      let n: VideoCard[] = [];
+      try { n = (await api.feed2048(1, 8))?.items || []; } catch { n = []; }
       if (!alive) return;
       setRows(Object.fromEntries(entries));
       setPosts(p);
+      setS2048(n);
       setLoading(false);
     })();
     return () => { alive = false; };
@@ -63,6 +67,30 @@ export default function Category({ wide }: { wide: boolean }) {
           </span>
           <IChevR size={16} className="text-mut" />
         </button>
+
+        {/* 2048 AI 短剧（第二数据源） */}
+        <section className="mb-5 a-rise">
+          <button onClick={() => push({ kind: "channel", cate: "2048", name: "2048 AI短剧" })}
+            className="w-full flex items-center gap-2.5 px-4 mb-2.5 text-left pressable group">
+            <span className="w-[36px] h-[36px] rounded-(--r-sm) tonal flex items-center justify-center shrink-0 text-primary">
+              <IGrid size={19} strokeWidth={1.9} />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[15.5px] font-semibold text-on leading-tight">2048 AI短剧</span>
+              <span className="block text-[10.5px] text-mut mt-0.5 truncate">2048ai.vip · 最近更新</span>
+            </span>
+            <span className="flex items-center gap-0.5 text-[11.5px] text-mut group-hover:text-primary transition-colors">
+              全部<IChevR size={14} />
+            </span>
+          </button>
+          <div className="scroll-x flex gap-2.5 px-4 snap-x">
+            {s2048.map((v) => (
+              <RowCard key={v.id} v={v}
+                onOpen={() => push({ kind: "feed", source: "2048", videoIds: s2048.map((x) => x.id), index: s2048.findIndex((x) => x.id === v.id), title: "2048 AI短剧" })} />
+            ))}
+            {!s2048.length && <div className="h-[150px] flex items-center text-[11.5px] text-dim px-1">{loading ? "加载中…" : "暂无内容"}</div>}
+          </div>
+        </section>
 
         {CHANNELS.map((c, ci) => {
           const list = rows[c.cate] || [];
@@ -147,7 +175,7 @@ export function ChannelPage({ cate, name, onBack, wide }: { cate: string; name: 
     setLoading(true);
     try {
       const next = page + 1;
-      const res = await api.category(cate, next, 20);
+      const res = cate === "2048" ? await api.feed2048(next, 20) : await api.category(cate, next, 20);
       setItems((prev) => {
         const seen = new Set(prev.map((x) => x.id));
         return [...prev, ...(res?.items || []).filter((x) => !seen.has(x.id))];
@@ -200,7 +228,7 @@ export function ChannelPage({ cate, name, onBack, wide }: { cate: string; name: 
       </div>
       <div className="flex-1 scroll-y px-4 pt-3 pb-8">
         {sorted.length ? (
-          <Masonry videos={sorted} wide={wide} onOpen={(v) => push({ kind: "feed", videoIds: sorted.map((x) => x.id), index: sorted.findIndex((x) => x.id === v.id), title: name })} />
+          <Masonry videos={sorted} wide={wide} onOpen={(v) => push({ kind: "feed", source: cate === "2048" ? "2048" : undefined, videoIds: sorted.map((x) => x.id), index: sorted.findIndex((x) => x.id === v.id), title: name })} />
         ) : err ? (
           <Empty icon={<IGrid size={26} />} title="加载失败" sub={err} action="重试" onAction={loadMore} />
         ) : (

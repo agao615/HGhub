@@ -26,16 +26,20 @@ type Props = {
   /** 从观看记录续播：起始集数与秒数 */
   startEp?: number;
   startTime?: number;
+  /** 数据源："2048" 走第二数据源，其余走黄果 */
+  source?: string;
 };
 
 const RATES = [1, 1.25, 1.5, 2, 3, 4, 5];
 
 const stripHtml = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 
-export default function Feed({ videoIds, startIndex = 0, title = "", mode, kind = "video", active, bottomInset, onBack, onNearEnd, startEp, startTime }: Props) {
+export default function Feed({ videoIds, startIndex = 0, title = "", mode, kind = "video", source, active, bottomInset, onBack, onNearEnd, startEp, startTime }: Props) {
   const store = useStore();
   const { isLiked, isFav, toggleLikeLocal, toggleFavLocal, toggleFollowLocal, muted, setMuted, volume, setVolume, toast, addHistory, user, setLoginOpen } = store;
   const isDesktop = platform !== "android";
+  /** 2048 源没有点赞/收藏/评论接口，这些入口直接不渲染 */
+  const is2048 = source === "2048";
 
   const boxRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<VideoHandle>(null);
@@ -116,7 +120,7 @@ export default function Feed({ videoIds, startIndex = 0, title = "", mode, kind 
     liveRef.current = { id: curId, ep: curEp, dur: duration, t };
     setTime(t);
     const now = Date.now();
-    if (duration > 0 && now - lastSaveRef.current > 5000) {
+    if (!is2048 && duration > 0 && now - lastSaveRef.current > 5000) {
       lastSaveRef.current = now;
       addHistory(curId, curEp, t, duration);
     }
@@ -169,7 +173,9 @@ export default function Feed({ videoIds, startIndex = 0, title = "", mode, kind 
 
   /* 分享：复制播放链接 */
   const shareLink = () => {
-    const u = kind === "post" ? (posts[curId]?.video_url || meta.title) : `https://huangguoai.com/video/${curId}/`;
+    const u = is2048
+      ? `https://2048ai.vip/media/short-dramas/${curId}/episodes/${curEp}`
+      : kind === "post" ? (posts[curId]?.video_url || meta.title) : `https://huangguoai.com/video/${curId}/`;
     navigator.clipboard?.writeText(u).then(() => toast("链接已复制", "ok")).catch(() => {});
   };
 
@@ -214,7 +220,9 @@ export default function Feed({ videoIds, startIndex = 0, title = "", mode, kind 
     const need = [videoIds[index], videoIds[index + 1], videoIds[index - 1]].filter(Boolean);
     need.forEach((id) => {
       if (details[id]) return;
-      api.video(id).then((d) => { if (alive) setDetails((m) => ({ ...m, [id]: d })); }).catch(() => {});
+      (is2048 ? api.video2048(id) : api.video(id))
+        .then((d) => { if (alive) setDetails((m) => ({ ...m, [id]: d })); })
+        .catch(() => {});
     });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -237,12 +245,12 @@ export default function Feed({ videoIds, startIndex = 0, title = "", mode, kind 
     if (!curId) return;
     if (playUrls[playKey]) return;
     let alive = true;
-    api.play(curId, curEp)
+    (is2048 ? api.play2048(curId, curEp) : api.play(curId, curEp))
       .then((info) => {
         if (!alive) return;
         if (!info?.video_url) throw new Error("暂无播放地址");
         setPlayUrls((m) => ({ ...m, [playKey]: info.video_url }));
-        addHistory(curId, curEp);
+        if (!is2048) addHistory(curId, curEp);
       })
       .catch((e) => { if (alive) setErr((e as Error).message || "取播放地址失败"); });
     return () => { alive = false; };
@@ -267,7 +275,7 @@ export default function Feed({ videoIds, startIndex = 0, title = "", mode, kind 
   /* 离开播放页时把最后位置落盘 */
   useEffect(() => () => {
     const s = liveRef.current;
-    if (s.id && s.dur) addHistory(s.id, s.ep, s.t, s.dur);
+    if (!is2048 && s.id && s.dur) addHistory(s.id, s.ep, s.t, s.dur);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -289,7 +297,7 @@ export default function Feed({ videoIds, startIndex = 0, title = "", mode, kind 
         case "m": case "M": setMuted((v) => !v); break;
         case "l": case "L": onLike(); break;
         case "s": case "S": onFav(); break;
-        case "c": case "C": setPanel("comments"); break;
+        case "c": case "C": if (!is2048) setPanel("comments"); break;
         case "e": case "E": setPanel("episodes"); break;
         default: break;
       }
@@ -583,14 +591,18 @@ export default function Feed({ videoIds, startIndex = 0, title = "", mode, kind 
               {!fs && !isDesktop && (
                 <div className="absolute right-3 z-20 flex flex-col items-center gap-[16px]"
                   style={{ bottom: `calc(var(--sab, 0px) + ${bottomInset + 92}px)` }}>
-                  <button onClick={onFav} className="flex flex-col items-center gap-1 pressable" aria-pressed={isFav(curId)} aria-label="收藏">
-                    {isFav(curId) ? <IStarF size={27} className="hg-gold" /> : <IStar size={27} className="hg-ink hg-ov-shadow" />}
-                    <span className="text-[10.5px] hg-ink-2 hg-ov-shadow">收藏</span>
-                  </button>
-                  <button onClick={() => setPanel("comments")} className="flex flex-col items-center gap-1 pressable" aria-label="评论">
-                    <ICommentF size={26} className="hg-ink hg-ov-shadow" />
-                    <span className="text-[10.5px] hg-ink-2 hg-ov-shadow">评论</span>
-                  </button>
+                  {!is2048 && (
+                    <>
+                      <button onClick={onFav} className="flex flex-col items-center gap-1 pressable" aria-pressed={isFav(curId)} aria-label="收藏">
+                        {isFav(curId) ? <IStarF size={27} className="hg-gold" /> : <IStar size={27} className="hg-ink hg-ov-shadow" />}
+                        <span className="text-[10.5px] hg-ink-2 hg-ov-shadow">收藏</span>
+                      </button>
+                      <button onClick={() => setPanel("comments")} className="flex flex-col items-center gap-1 pressable" aria-label="评论">
+                        <ICommentF size={26} className="hg-ink hg-ov-shadow" />
+                        <span className="text-[10.5px] hg-ink-2 hg-ov-shadow">评论</span>
+                      </button>
+                    </>
+                  )}
                   <button onClick={() => setFs(true)} className="flex flex-col items-center gap-1 pressable" aria-label="全屏">
                     <IExpand size={26} className="hg-ink hg-ov-shadow" />
                     <span className="text-[10.5px] hg-ink-2 hg-ov-shadow">全屏</span>
@@ -617,22 +629,26 @@ export default function Feed({ videoIds, startIndex = 0, title = "", mode, kind 
 
                 {kind === "video" && (
                   <>
-                    <button onClick={onLike} className="flex flex-col items-center gap-1 pressable" aria-pressed={isLiked(curId)}>
-                      <span key={heartBurst} className={heartBurst ? "a-pop" : ""}>
-                        {isLiked(curId) ? <IHeartF size={30} className="text-neon" /> : <IHeart size={30} className="text-white tsh" />}
-                      </span>
-                      <span className="text-[10.5px] text-white/90 tabular-nums">{fmt(likeCount)}</span>
-                    </button>
+                    {!is2048 && (
+                      <>
+                        <button onClick={onLike} className="flex flex-col items-center gap-1 pressable" aria-pressed={isLiked(curId)}>
+                          <span key={heartBurst} className={heartBurst ? "a-pop" : ""}>
+                            {isLiked(curId) ? <IHeartF size={30} className="text-neon" /> : <IHeart size={30} className="text-white tsh" />}
+                          </span>
+                          <span className="text-[10.5px] text-white/90 tabular-nums">{fmt(likeCount)}</span>
+                        </button>
 
-                    <button onClick={() => setPanel("comments")} className="flex flex-col items-center gap-1 pressable">
-                      <ICommentF size={27} className="text-white tsh" />
-                      <span className="text-[10.5px] text-white/90 tabular-nums">{fmt(meta.comment)}</span>
-                    </button>
+                        <button onClick={() => setPanel("comments")} className="flex flex-col items-center gap-1 pressable">
+                          <ICommentF size={27} className="text-white tsh" />
+                          <span className="text-[10.5px] text-white/90 tabular-nums">{fmt(meta.comment)}</span>
+                        </button>
 
-                    <button onClick={onFav} className="flex flex-col items-center gap-1 pressable" aria-pressed={isFav(curId)}>
-                      {isFav(curId) ? <IStarF size={27} className="hg-gold" /> : <IStar size={27} className="hg-ink hg-ov-shadow" />}
-                      <span className="text-[10.5px] text-white/90 tabular-nums">{fmt(meta.collect)}</span>
-                    </button>
+                        <button onClick={onFav} className="flex flex-col items-center gap-1 pressable" aria-pressed={isFav(curId)}>
+                          {isFav(curId) ? <IStarF size={27} className="hg-gold" /> : <IStar size={27} className="hg-ink hg-ov-shadow" />}
+                          <span className="text-[10.5px] text-white/90 tabular-nums">{fmt(meta.collect)}</span>
+                        </button>
+                      </>
+                    )}
 
                     <button onClick={() => setPanel("episodes")} className="flex flex-col items-center gap-1 pressable">
                       <IList size={26} className="text-white tsh" />

@@ -72,6 +72,11 @@ export const api = {
   video: (id: number) => call<Detail>("api_video", { id }),
   play: (id: number, ep: number) => call<PlayInfo>("api_play", { id, ep }),
 
+  /* 2048 AI 短剧（第二数据源）：列表 / 详情 / 播放，形状与黄果一致 */
+  feed2048: (page = 1, size = 20) => call<Paged<VideoCard>>("api_2048_feed", { page, size }),
+  video2048: (id: number) => call<Detail>("api_2048_video", { id }),
+  play2048: (id: number, ep: number) => call<PlayInfo>("api_2048_play", { id, ep }),
+
   comments: (id: number, ep: number, page = 1, size = 20) =>
     call<CommentPage>("api_comments", { id, ep, page, size }),
   commentSend: (id: number, ep: number, text: string, replyId?: number) =>
