@@ -14,7 +14,7 @@ export function WaterfallCard({ v, onOpen }: { v: VideoCard; onOpen: () => void 
       <Img src={v.cover} />
       <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
       <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold brand-grad elev-1">
-        {v.is_finished ? "已完结" : `更新至${v.episode_count}集`}
+        {v.is_finished ? `全${v.episode_count}集` : `更新至${v.episode_count}集`}
       </span>
       <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-black/45 backdrop-blur-sm text-[9px] font-semibold text-white/90">
         <IPlayF size={9} />{fmt(v.hot)}
@@ -54,7 +54,7 @@ export function RowCard({ v, onOpen }: { v: VideoCard; onOpen: () => void }) {
         <Img src={v.cover} />
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 to-transparent" />
         <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[8.5px] font-bold brand-grad">
-          {v.is_finished ? "完结" : `${v.episode_count}集`}
+          {v.is_finished ? `全${v.episode_count}集` : `${v.episode_count}集`}
         </span>
         <span className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 text-[9px] font-semibold text-white/90 tsh"><IPlayF size={9} />{fmt(v.hot)}</span>
       </div>

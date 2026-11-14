@@ -80,7 +80,7 @@ fn card(v: &Value) -> Value {
         "like_count": 0,
         "collect_count": 0,
         "comment_count": 0,
-        "is_finished": true,
+        "is_finished": false,
         "is_original": 1,
         "created_at": v.get("publishedAt").cloned().unwrap_or(json!("")),
         "author": { "id": -1, "name": "2048 AI短剧" }
@@ -158,7 +158,7 @@ pub async fn detail(id: i64) -> Result<Value, String> {
         },
         "author": { "id": -1, "name": "2048 AI短剧", "is_following": false },
         "interaction": { "collected": false, "liked": false },
-        "is_finished": true,
+        "is_finished": false,
         "is_original": 1
     }))
 }
